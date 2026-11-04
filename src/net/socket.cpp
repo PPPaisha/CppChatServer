@@ -108,7 +108,7 @@ void Socket::listen(int backlog)
 {
     if(backlog < 0)
     {
-        throws std::invalid_argument("backlog must not be negative");
+        throw std::invalid_argument("backlog must not be negative");
     }
     if(::listen(m_fd,backlog) == -1)
     {
