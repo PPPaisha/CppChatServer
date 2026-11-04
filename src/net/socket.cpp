@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <utility>
+#include <fcntl.h>
+#include <cerrno>
+#include <system_error>
 
 Socket::Socket()
 {
@@ -63,4 +66,26 @@ int Socket::getFd() const noexcept
 bool Socket::valid() const noexcept
 {
     return m_fd >= 0;
+}
+
+void Socket::setNonBlocking()
+{
+    int flags = ::fcntl(m_fd, F_GETFL,0);
+    if(flags == -1)
+    {
+        throw std::system_error(errno,std::generic_category(),"fcntl F_GETFL failed");
+    }
+    if(::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+        throw std::system_error(errno, std::generic_category(),"fcntl F_SETFL failed");
+    }
+}
+
+void Socket::setReuseAddr(bool enabled)
+{
+    int opt = enabled ? 1:0;
+    if(::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
+    {
+        throw std::system_error(errno, std::generic_category(),"setsockopt SO_REUSEADDR failed");
+    }
 }

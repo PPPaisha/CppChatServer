@@ -22,6 +22,9 @@ public:
     int getFd() const noexcept;
     bool valid() const noexcept;
 
+    void setNonBlocking();//设置套接字为非阻塞模式
+    void setReuseAddr();//设置套接字地址重用
+
 private:
     int m_fd = -1;
 };
