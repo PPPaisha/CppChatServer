@@ -13,6 +13,8 @@
 #include <fcntl.h>
 #include <cerrno>
 #include <system_error>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 Socket::Socket()
 {
@@ -87,5 +89,29 @@ void Socket::setReuseAddr(bool enabled)
     if(::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
     {
         throw std::system_error(errno, std::generic_category(),"setsockopt SO_REUSEADDR failed");
+    }
+}
+
+void Socket::bind(unsigned short port)
+{
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = ::htonl(INADDR_ANY);
+    addr.sin_port = ::htons(port);
+    if(::bind(m_fd,reinterpret_cast<sockaddr*>(&addr),sizeof(addr)) == -1)
+    {
+        throw std::system_error(errno, std::generic_category(),"bind failed");
+    }
+}
+
+void Socket::listen(int backlog)
+{
+    if(backlog < 0)
+    {
+        throws std::invalid_argument("backlog must not be negative");
+    }
+    if(::listen(m_fd,backlog) == -1)
+    {
+        throw std::system_error(errno, std::generic_category(),"listen failed");
     }
 }

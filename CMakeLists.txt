@@ -26,3 +26,10 @@ add_executable(
     src/net/socket.cpp 
 )
 target_include_directories(socket_options_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(
+    socket_listen_test
+    tests/socket_listen_test.cpp
+    src/net/socket.cpp 
+)
+target_include_directories(socket_listen_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

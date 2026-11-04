@@ -25,6 +25,9 @@ public:
     void setNonBlocking();//设置套接字为非阻塞模式
     void setReuseAddr(bool enabled);//设置套接字地址重用
 
+    void bind(unsigned short port);//绑定套接字到指定端口
+    void listen(int backlog = 128);//监听套接字
+
 private:
     int m_fd = -1;
 };
