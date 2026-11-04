@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <cerrno>
 #include <system_error>
+#include <cerrno>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
@@ -113,5 +114,27 @@ void Socket::listen(int backlog)
     if(::listen(m_fd,backlog) == -1)
     {
         throw std::system_error(errno, std::generic_category(),"listen failed");
+    }
+}
+
+std::optional<Socket> Socket::accept()
+{
+    while(true)
+    {
+        int clientFd = ::accept4(m_fd,nullptr,nullptr,SOCK_NONBLOCK);
+        if(clientFd >= 0)
+        {
+            return Socket(clientFd);
+        }
+        int error = errno;
+        if(error == EINTR)
+        {
+            continue;
+        }
+        if(error == EAGAIN || error == EWOULDBLOCK)
+        {
+            return std::nullopt;
+        }
+        throw std::system_error(error, std::generic_category(),"accept failed");
     }
 }

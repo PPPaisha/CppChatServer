@@ -6,6 +6,8 @@
 //------------------------------------------------------
 #pragma once
 
+#include <optional>
+
 class Socket
 {
 public:
@@ -27,6 +29,8 @@ public:
 
     void bind(unsigned short port);//绑定套接字到指定端口
     void listen(int backlog = 128);//监听套接字
+
+    std::optional<Socket> accept();
 
 private:
     int m_fd = -1;
