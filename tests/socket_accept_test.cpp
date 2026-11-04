@@ -25,6 +25,7 @@ int main()
     sockaddr_in address{};
     socklen_t length = sizeof(address);
 
+    //获取服务器端实际监听的端口号
     int ret = ::getsockname(server.getFd(),reinterpret_cast<sockaddr*>(&address), &length);
     assert(ret == 0);
 

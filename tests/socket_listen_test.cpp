@@ -21,11 +21,13 @@ int main()
     server.listen(128);
     sockaddr_in addr;
     socklen_t len = sizeof(addr);
+    //获取实际绑定的端口号
     int ret = ::getsockname(server.getFd(),reinterpret_cast<sockaddr*>(&addr), &len);
     assert(ret == 0);
     assert(ntohs(addr.sin_port) != 0);
     int accepting = 0;
     socklen_t optlen = sizeof(accepting);
+    //查询当前套接字是否处于监听状态
     ret = ::getsockopt(server.getFd(),SOL_SOCKET,SO_ACCEPTCONN,&accepting,&optlen);
     assert(ret == 0);
     assert(accepting == 1);
