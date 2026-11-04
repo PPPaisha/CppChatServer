@@ -1,0 +1,5 @@
+/home/cppdev/projects/CppChatServer/build/CMakeFiles/chat_server.dir
+/home/cppdev/projects/CppChatServer/build/CMakeFiles/socket_test.dir
+/home/cppdev/projects/CppChatServer/build/CMakeFiles/socket_options_test.dir
+/home/cppdev/projects/CppChatServer/build/CMakeFiles/edit_cache.dir
+/home/cppdev/projects/CppChatServer/build/CMakeFiles/rebuild_cache.dir

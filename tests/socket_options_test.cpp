@@ -14,11 +14,11 @@
 int main()
 {
     Socket sock;
-    assert(sock,valid());
-    sock.serNonBlocking();
+    assert(sock.valid());
+    sock.setNonBlocking();
     int flags = ::fcntl(sock.getFd(), F_GETFL, 0);
     assert(flags != -1);
-    assert((flag & O_NONBLOCK) != 0);
+    assert((flags & O_NONBLOCK) != 0);
     sock.setReuseAddr(true);
 
     int opt = 0;

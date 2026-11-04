@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/socket_test.dir/tests/socket_test.cpp.o CMakeFiles/socket_test.dir/src/net/socket.cpp.o -o socket_test 
