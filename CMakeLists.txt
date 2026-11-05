@@ -40,3 +40,11 @@ add_executable(
     src/net/epoll.cpp 
 )
 target_include_directories(epoll_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(
+    event_dispatcher_test
+    tests/event_dispatcher_test.cpp
+    src/net/event_dispatcher.cpp
+    src/net/epoll.cpp 
+)
+target_include_directories(event_dispatcher_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
