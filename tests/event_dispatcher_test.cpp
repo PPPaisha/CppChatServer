@@ -28,7 +28,7 @@ int main()
         ssize_t n = ::read(fds[0],&received,1);
         assert(n == 1);
         ++callbackCount;
-    })
+    });
 
     //没有数据 不应该执行回调
     int count = dispatcher.dispatch(0);
