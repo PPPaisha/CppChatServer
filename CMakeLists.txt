@@ -33,3 +33,10 @@ add_executable(
     src/net/socket.cpp 
 )
 target_include_directories(socket_listen_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(
+    epoll_test
+    tests/epoll_test.cpp
+    src/net/epoll.cpp 
+)
+target_include_directories(epoll_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
