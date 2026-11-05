@@ -41,7 +41,7 @@ void Epoll::add(int fd, uint32_t events)
     ev.data.fd = fd;
     if(::epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
     {
-        throw std::system_error(errno, std::generic_vategory(),"epoll add failed");
+        throw std::system_error(errno, std::generic_category(),"epoll add failed");
     }
 }
 

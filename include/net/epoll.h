@@ -21,8 +21,9 @@ public:
     Epoll(Epoll&& other) = delete;
     Epoll& operator=(Epoll&& other) = delete;
 
-    void add(int fd, unit_32_t events);
-    void modify(int fd, unit_32_t events);
+    void add(int fd, uint32_t events);
+    void modify(int fd, uint32_t events);
+
     void remove(int fd);
 
     int wait(int timeoutMs);
