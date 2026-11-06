@@ -48,3 +48,14 @@ add_executable(
     src/net/epoll.cpp 
 )
 target_include_directories(event_dispatcher_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+find_package(Threads REQUIRED)
+add_executable(
+    event_loop_test
+    tests/event_loop_test.cpp
+    src/net/event_loop.cpp
+    src/net/event_dispatcher.cpp 
+    src/net/epoll.cpp 
+)
+target_include_directories(event_loop_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(event_loop_test PRIVATE Threads::Threads)
