@@ -27,6 +27,12 @@ public:
 
     bool isRunning() const noexcept;
 
+    using EventCallback = EventDispatcher::EventCallback;
+
+    void add(int fd, uint32_t events, EventCallback callback);
+    void modify(int fd, uint32_t events);
+    void remove(int fd);
+
 private:
     void handleWakeup(uint32_t events);
 

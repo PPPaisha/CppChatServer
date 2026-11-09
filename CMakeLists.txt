@@ -59,3 +59,13 @@ add_executable(
 )
 target_include_directories(event_loop_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(event_loop_test PRIVATE Threads::Threads)
+
+add_executable(
+    tcp_accept_test
+    tests/tcp_accept_test.cpp
+    src/net/event_loop.cpp
+    src/net/event_dispatcher.cpp 
+    src/net/epoll.cpp
+)
+target_include_directories(tcp_accept_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(tcp_accept_test PRIVATE Threads::Threads)

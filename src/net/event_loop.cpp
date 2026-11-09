@@ -15,6 +15,7 @@
 
 EventLoop::EventLoop()
 {
+    //创建并注册唤醒fd
     m_wakeupFd = ::eventfd(0,EFD_NONBLOCK | EFD_CLOEXEC);
     if(m_wakeupFd == -1)
     {
@@ -46,6 +47,7 @@ EventLoop::~EventLoop()
 
 void EventLoop::run()
 {
+    //尝试给m_started设置为true 如果m_started本身就是true 那么就抛出异常
     if(m_started.exchange(true))
     {
         throw std::runtime_error("EventLoop already started");
@@ -112,4 +114,19 @@ void EventLoop::handleWakeup(uint32_t events)
 
         throw std::system_error(n == -1 ? errno :EIO, std::generic_category(),"eventfd read failed");
     }
+}
+
+void EventLoop::add(int fd, uint32_t events, EventCallback callback)
+{
+    m_dispatcher.add(fd,events,std::move(callback));
+}
+
+void EventLoop::modify(int fd, uint32_t events)
+{
+    m_dispatcher.modify(fd,events);
+}
+
+void EventLoop::remove(int fd)
+{
+    m_dispatcher.remove(fd);
 }
