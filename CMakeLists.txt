@@ -66,6 +66,7 @@ add_executable(
     src/net/event_loop.cpp
     src/net/event_dispatcher.cpp 
     src/net/epoll.cpp
+    src/net/socket.cpp
 )
 target_include_directories(tcp_accept_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(tcp_accept_test PRIVATE Threads::Threads)
