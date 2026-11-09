@@ -38,7 +38,7 @@ int main()
     int acceptedCount = 0;
     loop.add(server.getFd(),EPOLLIN,[&](uint32_t events)
     {
-        if(events & EPOLLIN)
+        if(!(events & EPOLLIN))
         {
             return;
         }
