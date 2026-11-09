@@ -36,7 +36,7 @@ int main()
     std::string received;
     loop.add(server.getFd(),EPOLLIN,[&](uint32_t)
     {
-        while(auto accepted == server.accept())
+        while(auto accepted = server.accept())
         {
             auto connection = std::make_shared<TcpConnection>(loop,std::move(*accepted));
             int fd = connection->getFd();
