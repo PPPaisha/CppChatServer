@@ -82,3 +82,11 @@ add_executable(
 )
 target_include_directories(tcp_connection_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(tcp_connection_test PRIVATE Threads::Threads)
+
+add_executable(
+    length_field_codec_test
+    tests/length_field_codec_test.cpp
+    src/net/length_field_codec.cpp
+)
+
+target_include_directories(length_field_codec_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
