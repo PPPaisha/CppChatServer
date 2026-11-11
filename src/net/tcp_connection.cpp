@@ -27,6 +27,10 @@ void TcpConnection::start()
         if(auto self = weak.lock())
         {
             self->handleRead(events);
+            if(!self->m_closed && (events & EPOLLOUT))
+            {
+                self->handleWrite();
+            }
         }
     });
 }
@@ -120,4 +124,66 @@ void TcpConnection::setCloseCallback(CloseCallback callback)
 int TcpConnection::getFd() const noexcept
 {
     return m_socket.getFd();
+}
+
+void TcpConnection::sendMessage(const std::string& message)
+{
+    if(m_closed)
+    {
+        return;
+    }
+    std::string frame = LengthFieldCodec::encode(message);
+    m_outputBuffer.append(frame);
+    handleWrite();
+}
+
+void TcpConnection::handleWrite()
+{
+    if(m_closed)
+    {
+        return;
+    }
+
+    while(m_outputoffset < m_outputBuffer.size())
+    {
+        const char* data = m_outputBuffer.data()+m_outputoffset;
+        std::size_t remaining = m_outputBuffer.size()-m_outputoffset;
+        ssize_t n = ::send(m_socket.getFd(),data,remaining,MSG_NOSIGNAL);
+        if(n > 0)
+        {
+            m_outputoffset += static_cast<std::size_t>(n);
+        }
+        else if(n < 0 && errno == EINTR)
+        {
+            continue;
+        }
+        else if(n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            updateEvents();
+            return;
+        }
+        else
+        {
+            close();
+            return;
+        }
+    }
+    m_outputBuffer.clear();
+    m_outputoffset = 0;
+    updateEvents();
+}
+
+//根据发送缓冲区状态 决定是否监听EPOLLOUT事件
+void TcpConnection::updateEvents()
+{
+    if(m_closed)
+    {
+        return;
+    }
+    uint32_t events = EPOLLIN;
+    if(m_outputoffset < m_outputBuffer.size())
+    {
+        events |= EPOLLOUT;
+    }
+    m_loop.modify(m_socket.getFd(),events);
 }

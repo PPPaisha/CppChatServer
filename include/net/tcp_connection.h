@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <cstddef>
 
 class TcpConnection : public std::enable_shared_from_this<TcpConnection>
 {
@@ -28,14 +29,19 @@ public:
     void close();
     void setMessageCallback(MessageCallback callback);
     void setCloseCallback(CloseCallback callback);
+    void sendMessage(const std::string& message);
     int getFd() const noexcept;
 
 private:
     void handleRead(uint32_t events);
+    void handleWrite();
+    void updateEvents();
     EventLoop& m_loop;
     Socket m_socket;
     MessageCallback m_messageCallback;
     CloseCallback m_closeCallback;
     bool m_closed = false;
     LengthFieldCodec m_codec;
+    std::string m_outputBuffer;
+    std::size_t m_outputoffset = 0;
 };
