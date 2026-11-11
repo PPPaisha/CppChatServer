@@ -10,6 +10,7 @@
 #include <cstring>
 #include <stdexcept>
 
+//将一条消息编码为带长度字段的完整二进制帧
 std::string LengthFieldCodec::encode(const std::string& message)
 {
     if(message.size() > MAX_FRAME_SIZE)
@@ -23,6 +24,7 @@ std::string LengthFieldCodec::encode(const std::string& message)
     return frame;
 }
 
+//接收任意数量的字节 解析其中所有完整消息
 std::vector<std::string> LengthFieldCodec::feed(const char* data, std::size_t length)
 {
     if(length > 0 && data == nullptr)
@@ -51,6 +53,7 @@ std::vector<std::string> LengthFieldCodec::feed(const char* data, std::size_t le
     return messages;
 }
 
+//查询还有多少字节暂存在接收缓冲区中
 std::size_t LengthFieldCodec::bufferedBytes() const noexcept
 {
     return m_buffer.size();

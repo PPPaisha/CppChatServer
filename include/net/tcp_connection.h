@@ -8,6 +8,7 @@
 
 #include "net/socket.h"
 #include "net/event_loop.h"
+#include "net/length_field_codec.h"
 
 #include <functional>
 #include <memory>
@@ -36,4 +37,5 @@ private:
     MessageCallback m_messageCallback;
     CloseCallback m_closeCallback;
     bool m_closed = false;
+    LengthFieldCodec m_codec;
 };

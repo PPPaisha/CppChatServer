@@ -7,9 +7,12 @@
 #include "net/tcp_connection.h"
 
 #include <sys/socket.h>
+#include <sys/epoll.h>
 #include <cerrno>
 #include <system_error>
 #include <utility>
+#include <stdexcept>
+#include <vector>
 
 TcpConnection::TcpConnection(EventLoop& loop, Socket socket)
     :m_loop(loop),m_socket(std::move(socket))
@@ -30,12 +33,12 @@ void TcpConnection::start()
 
 void TcpConnection::handleRead(uint32_t events)
 {
-    if(events & (EPOLLERR | EPOLLHUP))
+    if(events & EPOLLERR)
     {
         close();
         return;
     }
-    if(!(events & EPOLLIN))
+    if(!(events & (EPOLLIN | EPOLLHUP | EPOLLRDHUP)))
     {
         return;
     }
@@ -46,13 +49,26 @@ void TcpConnection::handleRead(uint32_t events)
         ssize_t n = ::recv(m_socket.getFd(),buffer,sizeof(buffer),0);
         if(n > 0)
         {
-            if(m_messageCallback)
+            std::vector<std::string> messages;
+            try
             {
-                m_messageCallback(std::string(buffer,n));
+                messages = m_codec.feed(buffer,static_cast<std::size_t>(n));
             }
-            if(m_closed)
+            catch(const std::length_error&)
             {
+                close();
                 return;
+            }
+            for(const auto& message : messages)
+            {
+                if(m_messageCallback)
+                {
+                    m_messageCallback(message);
+                }
+                if(m_closed)
+                {
+                    return;
+                }
             }
         }
         else if(n == 0)
