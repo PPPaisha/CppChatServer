@@ -94,7 +94,7 @@ target_include_directories(length_field_codec_test PRIVATE ${CMAKE_CURRENT_SOURC
 
 add_executable(
     tcp_connection_length_field_codec_test
-    tests/tcp_connection_length_field_codec_test.cpp
+    tests/tcp_connection_codec_test.cpp
     src/net/event_loop.cpp
     src/net/event_dispatcher.cpp 
     src/net/epoll.cpp
