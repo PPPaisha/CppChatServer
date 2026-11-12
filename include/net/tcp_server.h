@@ -8,7 +8,7 @@
 
 #include "net/event_loop.h"
 #include "net/socket.h"
-#include "net/tcp-connection.h"
+#include "net/tcp_connection.h"
 
 #include <cstdint>
 #include <functional>
