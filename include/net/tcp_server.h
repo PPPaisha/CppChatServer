@@ -41,5 +41,6 @@ private:
 
     std::unordered_map<int,ConnectionPtr> m_connections;
     MessageCallback m_messageCallback;
+    ConnectionCloseCallback m_connectionCloseCallback;
     bool m_started = false;
 };
