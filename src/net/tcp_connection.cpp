@@ -214,7 +214,7 @@ void TcpConnection::updateEvents()
     m_loop.modify(m_socket.getFd(),events);
 }
 
-void TcpConnetion::shutdown()
+void TcpConnection::shutdown()
 {
     if(m_closed || m_disconnecting)
     {
