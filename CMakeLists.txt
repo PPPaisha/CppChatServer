@@ -134,3 +134,19 @@ add_executable(
 target_include_directories(tcp_connection_shutdown_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(tcp_connection_shutdown_test PRIVATE Threads::Threads)
+
+add_executable(
+    tcp_server_test
+    tests/tcp_server_test.cpp
+    src/net/socket.cpp
+    src/net/epoll.cpp
+    src/net/event_dispatcher.cpp
+    src/net/event_loop.cpp
+    src/net/tcp_connection.cpp
+    src/net/length_field_codec.cpp
+    src/net/tcp_server.cpp
+)
+
+target_include_directories(tcp_server_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+target_link_libraries(tcp_server_test PRIVATE Threads::Threads)
