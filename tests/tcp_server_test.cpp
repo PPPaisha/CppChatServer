@@ -70,7 +70,7 @@ void runClient(int port, const std::string& expected)
         if(n > 0)
         {
             auto messages = decoder.feed(buffer,static_cast<std::size_t>(n));
-            if(messages.empty())
+            if(!messages.empty())
             {
                 if(messages.size()!=1 || messages[0] != expected)
                 {
