@@ -12,7 +12,7 @@
 
 #include <cstdint>
 #include <functional>
-#include <memeory>
+#include <memory>
 #include <unordered_map>
 
 class TcpServer
