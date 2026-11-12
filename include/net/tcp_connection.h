@@ -30,17 +30,22 @@ public:
     void setMessageCallback(MessageCallback callback);
     void setCloseCallback(CloseCallback callback);
     void sendMessage(const std::string& message);
+    void shutdown();
     int getFd() const noexcept;
 
 private:
     void handleRead(uint32_t events);
     void handleWrite();
     void updateEvents();
+    void shutdownWrite();
     EventLoop& m_loop;
     Socket m_socket;
     MessageCallback m_messageCallback;
     CloseCallback m_closeCallback;
-    bool m_closed = false;
+    bool m_closed = false; //表示连接已经进入最终关闭流程
+    bool m_disconnecting = false;//表示已经请求优雅关闭 不再接受新的发送消息
+    bool m_writeShutdown = false;//表示已经成功执行写方向半关闭
+    bool m_peerReadClosed = false;//表示已经收到了对端的EOF
     LengthFieldCodec m_codec;
     std::string m_outputBuffer;
     std::size_t m_outputoffset = 0;

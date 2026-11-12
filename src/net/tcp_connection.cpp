@@ -77,7 +77,16 @@ void TcpConnection::handleRead(uint32_t events)
         }
         else if(n == 0)
         {
-            close();
+            m_peerReadClosed = true;
+            m_disconnecting = true;
+            if(m_outputoffset == m_outputBuffer.size())
+            {
+                shutdownWrite();
+            }
+            else
+            {
+                updateEvents();
+            }
             return;
         }
         else if(errno == EINTR)
@@ -128,11 +137,16 @@ int TcpConnection::getFd() const noexcept
 
 void TcpConnection::sendMessage(const std::string& message)
 {
-    if(m_closed)
+    if(m_closed || m_disconnecting)
     {
         return;
     }
     std::string frame = LengthFieldCodec::encode(message);
+    if(m_outputoffset == m_outputBuffer.size())
+    {
+        m_outputBuffer.clear();
+        m_outputoffset = 0;
+    }
     m_outputBuffer.append(frame);
     handleWrite();
 }
@@ -170,6 +184,14 @@ void TcpConnection::handleWrite()
     }
     m_outputBuffer.clear();
     m_outputoffset = 0;
+    if(m_disconnecting)
+    {
+        shutdownWrite();
+        if(m_closed)
+        {
+            return;
+        }
+    }
     updateEvents();
 }
 
@@ -180,10 +202,52 @@ void TcpConnection::updateEvents()
     {
         return;
     }
-    uint32_t events = EPOLLIN;
+    uint32_t events = 0;
+    if(!m_peerReadClosed)
+    {
+        events |= EPOLLIN;
+    }
     if(m_outputoffset < m_outputBuffer.size())
     {
         events |= EPOLLOUT;
     }
     m_loop.modify(m_socket.getFd(),events);
+}
+
+void TcpConnetion::shutdown()
+{
+    if(m_closed || m_disconnecting)
+    {
+        return;
+    }
+    m_disconnecting = true;
+    if(m_outputoffset == m_outputBuffer.size())
+    {
+        shutdownWrite();
+    }
+    else
+    {
+        updateEvents();
+    }
+}
+
+void TcpConnection::shutdownWrite()
+{
+    if(m_closed)
+    {
+        return;
+    }
+    if(!m_writeShutdown)
+    {
+        if(::shutdown(m_socket.getFd(),SHUT_WR)!=0)
+        {
+            close();
+            return;
+        }
+        m_writeShutdown = true;
+    }
+    if(m_peerReadClosed)
+    {
+        close();
+    }
 }

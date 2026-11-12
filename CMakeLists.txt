@@ -91,7 +91,7 @@ add_executable(
 )
 
 target_include_directories(length_field_codec_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
+      
 add_executable(
     tcp_connection_length_field_codec_test
     tests/tcp_connection_codec_test.cpp
@@ -119,3 +119,18 @@ add_executable(
 target_include_directories(tcp_connection_send_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(tcp_connection_send_test PRIVATE Threads::Threads)
+
+add_executable(
+    tcp_connection_shutdown_test
+    tests/tcp_connection_shutdown_test.cpp
+    src/net/socket.cpp
+    src/net/epoll.cpp
+    src/net/event_dispatcher.cpp
+    src/net/event_loop.cpp
+    src/net/tcp_connection.cpp
+    src/net/length_field_codec.cpp
+)
+
+target_include_directories(tcp_connection_shutdown_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+target_link_libraries(tcp_connection_shutdown_test PRIVATE Threads::Threads)
