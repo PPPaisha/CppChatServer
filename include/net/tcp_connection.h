@@ -20,6 +20,7 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection>
 public:
     using MessageCallback = std::function<void(const std::string&)>;
     using CloseCallback = std::function<void(int)>;
+    static constexpr std::size_t MAX_PENDING_BYTES = 1024*1024;
 
     TcpConnection(EventLoop& loop, Socket socket);
     TcpConnection(const TcpConnection&) = delete;
@@ -30,8 +31,10 @@ public:
     void setMessageCallback(MessageCallback callback);
     void setCloseCallback(CloseCallback callback);
     void sendMessage(const std::string& message);
+    bool trySendMessage(const std::string& message);
     void shutdown();
     int getFd() const noexcept;
+    std::size_t pendingBytes() const noexcept;
 
 private:
     void handleRead(uint32_t events);

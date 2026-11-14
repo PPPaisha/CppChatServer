@@ -137,18 +137,35 @@ int TcpConnection::getFd() const noexcept
 
 void TcpConnection::sendMessage(const std::string& message)
 {
+    (void)trySendMessage(message);//表示调用函数 但是明确忽略返回值
+}
+
+bool TcpConnection::trySendMessage(const std::string& message)
+{
     if(m_closed || m_disconnecting)
     {
-        return;
+        return false;
+    }
+    if(message.size() > LengthFieldCodec::MAX_FRAME_SIZE)
+    {
+        return false;
+    }
+
+    constexpr std::size_t headerSize = 4;
+    const std::size_t frameSize = headerSize + message.size();
+    if(frameSize > MAX_PENDING_BYTES - pendingBytes())
+    {
+        return false;
     }
     std::string frame = LengthFieldCodec::encode(message);
-    if(m_outputoffset == m_outputBuffer.size())
+    if(m_outputoffset > 0)
     {
-        m_outputBuffer.clear();
+        m_outputBuffer.erase(0,m_outputoffset);
         m_outputoffset = 0;
     }
     m_outputBuffer.append(frame);
     handleWrite();
+    return !m_closed;
 }
 
 void TcpConnection::handleWrite()
@@ -250,4 +267,9 @@ void TcpConnection::shutdownWrite()
     {
         close();
     }
+}
+
+std::size_t TcpConnection::pendingBytes() const noexcept
+{
+    return m_outputBuffer.size() - m_outputoffset;
 }
