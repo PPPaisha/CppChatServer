@@ -140,7 +140,7 @@ void TcpConnection::sendMessage(const std::string& message)
     (void)trySendMessage(message);//表示调用函数 但是明确忽略返回值
 }
 
-void TcpConnection::sendMessageAsync(const std::string& message)
+void TcpConnection::sendMessageAsync(std::string message)
 {
     //获取一个指向当前连接的弱引用指针
     std::weak_ptr<TcpConnection> weak = weak_from_this();
@@ -156,7 +156,7 @@ void TcpConnection::sendMessageAsync(const std::string& message)
     });
 }
 
-bool TcpConnection::trySendMessage(std::string message)
+bool TcpConnection::trySendMessage(const std::string& message)
 {
     if(!m_loop.isInLoopThread())
     {
