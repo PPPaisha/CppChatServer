@@ -51,7 +51,7 @@ int main()
     for (int i = 0; i < producerCount; ++i)
     {
         producers.emplace_back([&, i]()
-                               {
+    {
         for(int j=0; j<tasksPerProducer; ++j)
         {
             loop.queueInLoop([&,i,j]()
@@ -71,7 +71,8 @@ int main()
                 });
             }
         });
-        } });
+        } 
+    });
     }
 
     //测试3:从其他线程调用runInLoop
@@ -88,7 +89,7 @@ int main()
     }
     extraProducer.join();
     //任务已经入队 但EventLoop尚未运行
-    if(executeCount != 0)
+    if(executedCount != 0)
     {
         throw std::runtime_error("Tasks executed in wrong thread");
     }
