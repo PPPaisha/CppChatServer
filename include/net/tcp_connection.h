@@ -31,6 +31,7 @@ public:
     void setMessageCallback(MessageCallback callback);
     void setCloseCallback(CloseCallback callback);
     void sendMessage(const std::string& message);
+    void sendMessageAsync(std::string message);//线程安全的异步发送入口
     bool trySendMessage(const std::string& message);
     void shutdown();
     int getFd() const noexcept;
