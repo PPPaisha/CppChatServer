@@ -168,3 +168,18 @@ target_include_directories(tcp_connection_backpressure_test
 target_link_libraries(tcp_connection_backpressure_test
     PRIVATE Threads::Threads
 )
+
+add_executable(event_loop_task_test
+    tests/event_loop_task_test.cpp
+    src/net/epoll.cpp
+    src/net/event_dispatcher.cpp
+    src/net/event_loop.cpp
+)
+
+target_include_directories(event_loop_task_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(event_loop_task_test
+    PRIVATE Threads::Threads
+)

@@ -13,7 +13,7 @@
 #include <stdexcept>
 #include <system_error>
 
-EventLoop::EventLoop()
+EventLoop::EventLoop() : m_loopThreadId(std::this_thread::get_id())
 {
     //创建并注册唤醒fd
     m_wakeupFd = ::eventfd(0,EFD_NONBLOCK | EFD_CLOEXEC);
@@ -91,7 +91,7 @@ bool EventLoop::isRunning() const noexcept
 
 void EventLoop::handleWakeup(uint32_t events)
 {
-    if(!events & EPOLLIN)
+    if(!(events & EPOLLIN))
     {
         return;
     }
@@ -114,6 +114,8 @@ void EventLoop::handleWakeup(uint32_t events)
 
         throw std::system_error(n == -1 ? errno :EIO, std::generic_category(),"eventfd read failed");
     }
+    //清理唤醒事件后 执行待处理任务
+    executePendingTasks();
 }
 
 void EventLoop::add(int fd, uint32_t events, EventCallback callback)
@@ -129,4 +131,61 @@ void EventLoop::modify(int fd, uint32_t events)
 void EventLoop::remove(int fd)
 {
     m_dispatcher.remove(fd);
+}
+
+bool EventLoop::isInLoopThread() const noexcept
+{
+    return std::this_thread::get_id() == m_loopThreadId;
+}
+
+//将任务放入队列 等待EventLoop执行
+void EventLoop::queueInLoop(Task task)
+{
+    if(!task)
+    {return;}
+    {
+        std::lock_guard<std::mutex> lock(m_taskMutex);
+        m_pendingTasks.push_back(std::move(task));
+    }
+    uint64_t one = 1;
+    while(::write(m_wakeupFd,&one,sizeof(one)) < 0)
+    {
+        if(errno == EINTR)
+        {
+            continue;
+        }
+        if(errno == EAGAIN)
+        {
+            break;
+        }
+        throw std::system_error(errno,std::system_category(),"eventfd wakeup failed");
+    }
+}
+
+//如果当前就是EventLoop所属线程 则立即执行 否则立即加入任务队列 等待EventLoop执行
+void EventLoop::runInLoop(Task task)
+{
+    if(!task)
+    {return;}
+    if(isInLoopThread())
+    {
+        task();
+    }
+    else
+    {
+        queueInLoop(std::move(task));
+    }
+}
+
+void EventLoop::executePendingTasks()
+{
+    std::vector<Task> tasks;
+    {
+        std::lock_guard<std::mutex> lock(m_taskMutex);
+        tasks.swap(m_pendingTasks);
+    }
+    for(auto& task : tasks)
+    {
+        task();
+    }
 }

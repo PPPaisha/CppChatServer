@@ -22,13 +22,13 @@
 
 int main()
 {
-    EventLoop loop;
+    EventLoop loop;//创建一个事件循环对象
 
-    Socket server;
-    server.setReuseAddr(true);
-    server.setNonBlocking();
-    server.bind(0);
-    server.listen();
+    Socket server;//创建一个套接字对象
+    server.setReuseAddr(true);//设置套接字地址复用
+    server.setNonBlocking();//设置套接字为非阻塞模式
+    server.bind(0);//绑定套接字到任意可用端口
+    server.listen();//开启监听
 
     sockaddr_in address{};
     socklen_t length = sizeof(address);
@@ -41,13 +41,14 @@ int main()
         throw std::runtime_error("getsockname failed");
     }
 
-    int port = ntohs(address.sin_port);
+    int port = ntohs(address.sin_port);//拿到套接字的端口号
 
-    std::shared_ptr<TcpConnection> connection;
+    std::shared_ptr<TcpConnection> connection;//创建一个智能指针来管理TcpConnection对象
 
     std::atomic<bool> observedBackpressure{false};
     std::atomic<bool> observedRejection{false};
 
+    //将套接字server添加到事件循环中 监听其EPOLLIN事件 当有客户端连接时 触发回调函数
     loop.add(server.getFd(), EPOLLIN, [&](uint32_t)
     {
         while (auto accepted = server.accept())
@@ -63,37 +64,43 @@ int main()
             {
                 throw std::runtime_error("setsockopt failed");
             }
-
+            //将serveraccept到的客户端套接字交给connection来管理
             connection = std::make_shared<TcpConnection>(
                 loop, std::move(*accepted)
             );
-
+            //设置连接关闭的回调函数 当连接关闭时 停止事件循环
             connection->setCloseCallback([&](int fd)
             {
                 loop.stop();
             });
-
+            //将这个连接添加到事件循环中
+            //主要流程包括: 将这个客户端加入时间循环中 监听其EPOLLIN事件 当有数据可读时 触发回调函数
             connection->start();
-
+            //服务器端准备发送的数据 64KB的'A'字符
             const std::string payload(64 * 1024, 'A');
 
             for (int i = 0; i < 100; ++i)
             {
+                //记录发送数据的结果 如果发送缓冲区已满 则返回false 表示拒绝发送
                 bool acceptedMessage =
                     connection->trySendMessage(payload);
-
+                //如果发送缓冲区中有未发送的数据 则说明发生了背压
                 if (connection->pendingBytes() > 0)
                 {
                     observedBackpressure = true;
                 }
-
+                //如果发送缓冲区已满 则说明发生了拒绝发送
                 if (!acceptedMessage)
                 {
                     observedRejection = true;
                     break;
                 }
             }
-            connection->shutdown();
+            // 所有发送请求结束，发起优雅关闭
+            // 如果应用层还有待发送数据，继续等待 EPOLLOUT
+            // 数据全部交给内核后，执行写半关闭
+            // 最终连接清理由 TcpConnection::close() 完成
+                connection->shutdown();
         }
        
     });
@@ -128,6 +135,7 @@ int main()
 
             while (true)
             {
+                //尝试接收服务器发送的数据
                 ssize_t n = ::recv(
                     client.getFd(),
                     buffer,
@@ -163,7 +171,7 @@ int main()
             loop.stop();
         }
     });
-
+    //启动事件循环
     loop.run();
     clientThread.join();
 
