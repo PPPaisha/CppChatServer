@@ -142,17 +142,29 @@ void TcpConnection::sendMessage(const std::string& message)
 
 void TcpConnection::sendMessageAsync(std::string message)
 {
-    //获取一个指向当前连接的弱引用指针
+    sendMessageAsync(std::move(message),{});
+}
+
+void TcpConnection::sendMessageAsync(std::string message, SendResultCallback callback)
+{
     std::weak_ptr<TcpConnection> weak = weak_from_this();
-    m_loop.queueInLoop([weak,message = std::move(message)]()
-    {   
-        //尝试获取有效的shared_ptr
+    m_loop.queueInLoop([weak,message = std::move(message),callback = std::move(callback)]()
+    {
         auto connection = weak.lock();
         if(!connection)
         {
+            //判断当前callback是否保存了有效的可调用目标
+            if(callback)
+            {
+                callback(false);
+            }
             return;
         }
-        (void)connection->trySendMessage(message);
+        bool accepted = connection->trySendMessage(message);
+        if(callback)
+        {
+            callback(accepted);
+        }
     });
 }
 
