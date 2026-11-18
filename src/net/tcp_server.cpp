@@ -10,6 +10,7 @@
 
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 TcpServer::TcpServer(EventLoop& loop, uint16_t port)
     :m_loop(loop)
@@ -58,10 +59,11 @@ void TcpServer::handleAccept(uint32_t events)
         auto connection = std::make_shared<TcpConnection>(m_loop,std::move(*accepted));
         int fd = connection->getFd();
         std::weak_ptr<TcpConnection> weak = connection;
-        connection->setMessageCallback([this,weak](const std::string& message)
+        connection->setMessageCallback([this,weak,fd](const std::string& message)
     {
         if(auto self = weak.lock())
         {
+            broadcast(fd,message);
             if(m_messageCallback)
             {
                 m_messageCallback(self,message);
@@ -99,4 +101,27 @@ void TcpServer::setConnectionCloseCallback(ConnectionCloseCallback callback)
 std::size_t TcpServer::connectionCount() const noexcept
 {
     return m_connections.size();
+}
+
+void TcpServer::broadcast(int senderFd, const std::string& message)
+{
+    if(!m_loop.isInLoopThread())
+    {
+        throw std::logic_error("broadcast must be called in the loop thread");
+    }
+    //先保存需要广播的目标连接
+    std::vector<std::shared_ptr<TcpConnection>> targets;
+    for(const auto& [fd,connection] : m_connections)
+    {
+        if(fd  == senderFd || !connection)
+        {
+            continue;
+        }
+        targets.push_back(connection);
+    }
+    //再逐个发送 避免遍历m_connections时删除元素
+    for(const auto& connection : targets)
+    {
+        (void)connection->trySendMessage(message);
+    }
 }

@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 #include <unordered_map>
 
 class TcpServer
@@ -30,6 +31,7 @@ public:
     void start();
     void setMessageCallback(MessageCallback callback);
     void setConnectionCloseCallback(ConnectionCloseCallback callback);
+    void broadcast(int senderFd, const std::string& message);//将消息广播给除senderFd之外的所有连接
     
     std::size_t connectionCount() const noexcept;
 private:
