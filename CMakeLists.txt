@@ -241,3 +241,25 @@ target_link_libraries(tcp_server_broadcast_test
     PRIVATE
     Threads::Threads
 )
+
+add_executable(chat_service_test
+    tests/chat_service_test.cpp
+    src/net/socket.cpp
+    src/net/epoll.cpp
+    src/net/event_dispatcher.cpp
+    src/net/event_loop.cpp
+    src/net/length_field_codec.cpp
+    src/net/tcp_connection.cpp
+    src/net/tcp_server.cpp
+    src/chat/chat_service.cpp
+)
+
+target_include_directories(chat_service_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(chat_service_test
+    PRIVATE
+    Threads::Threads
+)

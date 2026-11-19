@@ -59,11 +59,10 @@ void TcpServer::handleAccept(uint32_t events)
         auto connection = std::make_shared<TcpConnection>(m_loop,std::move(*accepted));
         int fd = connection->getFd();
         std::weak_ptr<TcpConnection> weak = connection;
-        connection->setMessageCallback([this,weak,fd](const std::string& message)
+        connection->setMessageCallback([this,weak](const std::string& message)
     {
         if(auto self = weak.lock())
         {
-            broadcast(fd,message);
             if(m_messageCallback)
             {
                 m_messageCallback(self,message);
