@@ -183,7 +183,7 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
     auto senderIt = m_fdToUser.find(fd);
     if(senderIt == m_fdToUser.end())
     {
-        connection->trySendMessage("ERROR: Not logged in");
+        connection->trySendMessage("ERROR Not logged in");
         return;
     }
     //复制用户名 避免发送过程中会话删除导致引用失效
@@ -204,7 +204,7 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         return;
     }
     //BROADCAST 消息内容
-    if(message.rfind("BROADCAST",0) = 0)
+    if(message.rfind("BROADCAST",0) == 0)
     {
         std::string content = message.substr(10);
         if(content.empty())

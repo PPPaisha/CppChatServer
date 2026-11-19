@@ -247,7 +247,7 @@ int main()
             c = connectClient(PORT);
             //1.未登录发送消息
             sendCommand(a,"SEND Bob Hello");
-            expectMessage(a,"ERROR: Not logged in");
+            expectMessage(a,"ERROR Not logged in");
 
             //2.三个用户注册
             sendCommand(a,"LOGIN Alice");
