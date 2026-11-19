@@ -16,6 +16,7 @@ class TcpConnection;
 
 struct UserSession
 {
+    int fd = -1;
     std::string userId;
     std::weak_ptr<TcpConnection> connection;
 };

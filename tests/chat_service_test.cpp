@@ -5,6 +5,7 @@
 // 文件描述:客户端聊天服务测试文件
 //------------------------------------------------------
 #include "chat/chat_service.h"
+#include "test_message_receiver.h"
 #include "net/event_loop.h"
 #include "net/tcp_server.h"
 #include "net/length_field_codec.h"
@@ -67,113 +68,6 @@ int connectClient(uint16_t port)
     return fd;
 }
 
-std::string receiveMessage(int fd)
-{
-    LengthFieldCodec decoder;
-    char buffer[4096];
-
-    using Clock = std::chrono::steady_clock;
-
-    const auto deadline =
-        Clock::now() + std::chrono::seconds(3);
-
-    while (true)
-    {
-        auto now = Clock::now();
-
-        if (now >= deadline)
-        {
-            throw std::runtime_error("Receive timeout");
-        }
-
-        auto remaining =
-            std::chrono::duration_cast<
-                std::chrono::milliseconds
-            >(deadline - now);
-
-        int timeout = static_cast<int>(
-            remaining.count()
-        );
-
-        if (timeout == 0)
-        {
-            timeout = 1;
-        }
-
-        pollfd pfd{};
-        pfd.fd = fd;
-        pfd.events = POLLIN;
-
-        int ready = ::poll(&pfd, 1, timeout);
-
-        if (ready == 0)
-        {
-            throw std::runtime_error("poll timeout");
-        }
-
-        if (ready < 0)
-        {
-            if (errno == EINTR)
-            {
-                continue;
-            }
-
-            throw std::runtime_error("poll failed");
-        }
-
-        if (pfd.revents & POLLNVAL)
-        {
-            throw std::runtime_error("Invalid socket");
-        }
-
-        if (pfd.revents & POLLERR)
-        {
-            throw std::runtime_error("Socket error");
-        }
-
-        if (!(pfd.revents & (POLLIN | POLLHUP)))
-        {
-            continue;
-        }
-
-        ssize_t n = ::recv(
-            fd,
-            buffer,
-            sizeof(buffer),
-            0
-        );
-
-        if (n == 0)
-        {
-            throw std::runtime_error(
-                "Peer closed connection"
-            );
-        }
-
-        if (n < 0)
-        {
-            if (errno == EINTR ||
-                errno == EAGAIN ||
-                errno == EWOULDBLOCK)
-            {
-                continue;
-            }
-
-            throw std::runtime_error("recv failed");
-        }
-
-        auto messages = decoder.feed(
-            buffer,
-            static_cast<std::size_t>(n)
-        );
-
-        if (!messages.empty())
-        {
-            return messages.front();
-        }
-    }
-}
-
 std::string encodeFrame(const std::string& message)
 {
     uint32_t length = htonl(
@@ -191,9 +85,9 @@ void sendCommand(int fd, const std::string& command)
     sendAll(fd,encodeFrame(command));
 }
 
-void expectMessage(int fd, const std::string& expected)
+void expectMessage(TestMessageReceiver& receiver, const std::string& expected)
 {
-    std::string actual = receiveMessage(fd);
+    std::string actual = receiver.receiveMessage();
     if(actual != expected)
     {
         throw std::runtime_error(
@@ -218,8 +112,25 @@ std::size_t queryOnlineCount(EventLoop& loop, ChatService& chat)
     return future.get();
 }
 
+void testMultipleFrames()
+{
+    LengthFieldCodec decoder;
+    std::string data = encodeFrame("First") + encodeFrame("Second") + encodeFrame("Third");
+    auto messages = decoder.feed(data.data(),data.size());
+
+    if(messages.size() != 3 ||
+       messages[0] != "First" ||
+       messages[1] != "Second" ||
+       messages[2] != "Third")
+    {
+        throw std::runtime_error("Multiple frames decoding failed");
+    }
+    std::cout<<"Multiple frames decoding passed!"<<std::endl;
+}
+
 int main()
 {
+    testMultipleFrames();
     constexpr uint16_t PORT = 12081;
     EventLoop loop;
     TcpServer server(loop, PORT);
@@ -245,17 +156,20 @@ int main()
             a = connectClient(PORT);
             b = connectClient(PORT);
             c = connectClient(PORT);
+            TestMessageReceiver receiverA(a);
+            TestMessageReceiver receiverB(b);
+            TestMessageReceiver receiverC(c);
             //1.未登录发送消息
             sendCommand(a,"SEND Bob Hello");
-            expectMessage(a,"ERROR Not logged in");
+            expectMessage(receiverA,"ERROR Not logged in");
 
             //2.三个用户注册
             sendCommand(a,"LOGIN Alice");
-            expectMessage(a,"LOGIN_OK");
+            expectMessage(receiverA,"LOGIN_OK");
             sendCommand(b,"LOGIN Bob");
-            expectMessage(b,"LOGIN_OK");
+            expectMessage(receiverB,"LOGIN_OK");
             sendCommand(c,"LOGIN Charlie");
-            expectMessage(c,"LOGIN_OK");
+            expectMessage(receiverC,"LOGIN_OK");
             if(queryOnlineCount(loop,chat) != 3)
             {
                 throw std::runtime_error("Online count should be 3");
@@ -264,22 +178,22 @@ int main()
 
             //3.重复注册
             sendCommand(a,"LOGIN Alice");
-            expectMessage(a,"LOGIN_FAIL");
+            expectMessage(receiverA,"LOGIN_FAIL");
             sendCommand(b,"LOGIN David");
-            expectMessage(b,"LOGIN_FAIL");
+            expectMessage(receiverB,"LOGIN_FAIL");
             std::cout<<"Duplicate login passed!"<<std::endl;
 
             //4.Alice私聊Bob
             sendCommand(a,"SEND Bob Hello");
-            expectMessage(b,"FROM Alice Hello");
-            expectMessage(a,"SEND_OK");
+            expectMessage(receiverB,"FROM Alice Hello");
+            expectMessage(receiverA,"SEND_OK");
             std::cout<<"Private message passed!"<<std::endl;
 
             //5.Alice广播
             sendCommand(a,"BROADCAST Hi all");
-            expectMessage(b,"BROADCAST_FROM Alice Hi all");
-            expectMessage(c,"BROADCAST_FROM Alice Hi all");
-            expectMessage(a,"BROADCAST_OK");
+            expectMessage(receiverB,"BROADCAST_FROM Alice Hi all");
+            expectMessage(receiverC,"BROADCAST_FROM Alice Hi all");
+            expectMessage(receiverA,"BROADCAST_OK");
             std::cout<<"Broadcast passed!"<<std::endl;
 
             //6.Bob断开连接
@@ -295,7 +209,7 @@ int main()
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
             sendCommand(a,"SEND Bob Hello");
-            expectMessage(a,"SEND_FAILED");
+            expectMessage(receiverA,"SEND_FAILED");
             std::cout<<"Disconnect cleanup passed!"<<std::endl;
 
             //7.其他客户端断开
@@ -345,6 +259,6 @@ int main()
             return 1;
         }
     }
-    std::cout<<"Version2.1 test passed!"<<std::endl;
+    std::cout<<"Version2.2 test passed!"<<std::endl;
     return 0;
 }

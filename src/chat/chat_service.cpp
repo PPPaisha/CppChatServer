@@ -75,23 +75,11 @@ bool ChatService::removeUser(const std::string& userId)
     {
         return false;
     }
-    if(auto connection = it->second.connection.lock())
+    const int fd = it->second.fd;
+    auto fdIt = m_fdToUser.find(fd);
+    if(fdIt != m_fdToUser.end() && fdIt->second == userId)
     {
-        m_fdToUser.erase(connection->getFd());
-    }
-    else
-    {
-        for(auto fdIt = m_fdToUser.begin(); fdIt != m_fdToUser.end();)
-        {
-            if(fdIt->second == userId)
-            {
-                fdIt = m_fdToUser.erase(fdIt);
-            }
-            else
-            {
-                ++fdIt;
-            }
-        }
+        m_fdToUser.erase(fdIt);
     }
     m_sessions.erase(it);
     return true;
@@ -105,8 +93,8 @@ void ChatService::removeConnection(int fd)
     {
         return;
     }
-    m_sessions.erase(it->second);
-    m_fdToUser.erase(it);
+    const std::string userId = it->second;
+    removeUser(userId);
 }
 
 bool ChatService::hasUser(const std::string& userId) const
@@ -130,7 +118,7 @@ bool ChatService::sendToUser(const std::string& userId, const std::string& messa
     auto connection = it->second.connection.lock();
     if(!connection)
     {
-        m_sessions.erase(it);
+        removeUser(userId);
         return false;
     }
     return connection->trySendMessage(message);
