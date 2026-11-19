@@ -146,7 +146,7 @@ std::size_t ChatService::broadcast(const std::string& senderId, const std::strin
         {
             continue;
         }
-        if(auto connection = it->second.connection.lock())
+        if(auto connection = session.connection.lock())
         {
             targets.push_back(std::move(connection));
         }
@@ -174,7 +174,7 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
     if(message.rfind("LOGIN",0) == 0)
     {
         std::string userId = message.substr(6);
-        bool valid = !userId.empty() && userId.find('') == std::string::npos;
+        bool valid = !userId.empty() && userId.find("") == std::string::npos;
         bool success = valid && registerUser(userId,connection);
         connection->trySendMessage(success ? "LOGIN_OK" : "LOGIN_FAIL");
         return;
