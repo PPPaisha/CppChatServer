@@ -29,7 +29,7 @@ public:
 
     std::string receiveMessage()
     {
-        if(m_messages.empty())
+        if(!m_messages.empty())
         {
             return popMessage();
         }
