@@ -38,7 +38,7 @@ bool ChatService::registerUser(const std::string& userId, const std::shared_ptr<
     {
         return false;
     }
-    UserSession session{userId,connection};
+    UserSession session{userId,fd,connection};
     auto [it, inserted] = m_sessions.emplace(userId, std::move(session));
     if(!inserted)
     {
