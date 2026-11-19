@@ -191,7 +191,7 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
     //SEND 接收者 消息内容
     if(message.rfind("SEND",0) == 0)
     {
-        std::size_t separator = message.find('',5);
+        std::size_t separator = message.find("",5);
         if(separator == std::string::npos || separator == 5 || separator+1 >= message.size())
         {
             connection->trySendMessage("ERROR: Invalid SEND format");
