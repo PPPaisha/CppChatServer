@@ -171,10 +171,10 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
     }
     const int fd = connection->getFd();
     //LOGIN用户名
-    if(message.rfind("LOGIN",0) == 0)
+    if(message.rfind("LOGIN ",0) == 0)
     {
         std::string userId = message.substr(6);
-        bool valid = !userId.empty() && userId.find("") == std::string::npos;
+        bool valid = !userId.empty() && userId.find(" ") == std::string::npos;
         bool success = valid && registerUser(userId,connection);
         connection->trySendMessage(success ? "LOGIN_OK" : "LOGIN_FAIL");
         return;
@@ -189,9 +189,9 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
     //复制用户名 避免发送过程中会话删除导致引用失效
     const std::string senderId = senderIt->second;
     //SEND 接收者 消息内容
-    if(message.rfind("SEND",0) == 0)
+    if(message.rfind("SEND ",0) == 0)
     {
-        std::size_t separator = message.find("",5);
+        std::size_t separator = message.find(' ',5);
         if(separator == std::string::npos || separator == 5 || separator+1 >= message.size())
         {
             connection->trySendMessage("ERROR: Invalid SEND format");
@@ -212,7 +212,7 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
             connection->trySendMessage("ERROR: Invalid BROADCAST format");
             return;
         }
-        broadcast(senderId,"BROADCAST_FROM" + senderId + " " + content);
+        broadcast(senderId,"BROADCAST_FROM " + senderId + " " + content);
         connection->trySendMessage("BROADCAST_OK");
         return;
     }
