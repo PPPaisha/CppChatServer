@@ -51,7 +51,7 @@ int main()
     }
 
     assert(threadIds.size() == 3);
-    assert(threadIds.find(std::this_thread::get_id()) == 0);
+    assert(threadIds.find(std::this_thread::get_id() == 0));
     std::cout<<"Thread ownership passed!"<<std::endl;
 
     //验证跨线程调度
