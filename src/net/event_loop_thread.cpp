@@ -71,6 +71,7 @@ void EventLoopThread::stop()
     std::unique_lock<std::mutex> lock(m_mutex);
     if(!m_started)
     {return;}
+    m_started = false;
     if(m_loop)
     {
         EventLoop* loop = m_loop;
@@ -81,7 +82,10 @@ void EventLoopThread::stop()
         });
     }
     lock.unlock();
-    m_thread.join();
+    if(m_thread.joinable())
+    {
+        m_thread.join();
+    }
     lock.lock();
     m_loop = nullptr;
 }
