@@ -281,3 +281,27 @@ target_include_directories(event_loop_thread_pool_test
 target_link_libraries(event_loop_thread_pool_test
     PRIVATE Threads::Threads
 )
+
+add_executable(multi_reactor_test
+    tests/multi_reactor_test.cpp
+    src/net/socket.cpp
+    src/net/epoll.cpp
+    src/net/event_dispatcher.cpp
+    src/net/event_loop.cpp
+    src/net/event_loop_thread.cpp
+    src/net/event_loop_thread_pool.cpp
+    src/net/tcp_connection.cpp
+    src/net/tcp_server.cpp
+    src/net/length_field_codec.cpp
+    src/chat/chat_service.cpp
+)
+
+target_include_directories(multi_reactor_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(multi_reactor_test
+    PRIVATE
+    Threads::Threads
+)

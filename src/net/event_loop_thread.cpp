@@ -48,7 +48,17 @@ void EventLoopThread::threadFunc()
             m_ready = true;
         }
         m_cv.notify_one();
-        loop.run();
+        try
+        {
+            loop.run();
+        }
+        catch(...)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_error = std::current_exception();
+            m_loop = nullptr;
+            return;
+        }
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_loop = nullptr;

@@ -29,6 +29,7 @@ public:
 
     void start();
     void close();
+    void closeAsync();
     void setMessageCallback(MessageCallback callback);
     void setCloseCallback(CloseCallback callback);
     void sendMessage(const std::string& message);
@@ -38,6 +39,7 @@ public:
     void shutdown();
     int getFd() const noexcept;
     std::size_t pendingBytes() const noexcept;
+    const EventLoop& getLoop() const noexcept;
 
 private:
     void handleRead(uint32_t events);

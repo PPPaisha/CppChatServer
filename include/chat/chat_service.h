@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <functional>
 #include <unordered_map>
 
 class EventLoop;
@@ -24,9 +25,13 @@ struct UserSession
 class ChatService
 {
 public:
+    using SendResultCallback = std::function<void(bool)>;
     explicit ChatService(EventLoop& loop);
     void removeConnection(int fd);
+    void stop();
     void handleMessage(const std::shared_ptr<TcpConnection>& connection, const std::string& message);
+    void sendToUserAsync(const std::string& userId, const std::string& message, SendResultCallback callback); 
+
     bool registerUser(const std::string& userId, const std::shared_ptr<TcpConnection>& connection);
     bool removeUser(const std::string& userId);
     bool hasUser(const std::string& userId) const;
@@ -40,4 +45,5 @@ private:
     EventLoop& m_loop;
     std::unordered_map<std::string,UserSession> m_sessions;
     std::unordered_map<int,std::string> m_fdToUser;
+    bool m_stopping = false;
 };

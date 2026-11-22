@@ -124,6 +124,31 @@ bool ChatService::sendToUser(const std::string& userId, const std::string& messa
     return connection->trySendMessage(message);
 }
 
+void ChatService::sendToUserAsync(const std::string& userId, const std::string& message, SendResultCallback callback)
+{
+    ensureLoopThread();
+    auto it = m_sessions.find(userId);
+    if(it == m_sessions.end())
+    {
+        if(callback)
+        {
+            callback(false);
+        }
+        return;
+    }
+    auto connection = it->second.connection.lock();
+    if(!connection)
+    {
+        removeUser(userId);
+        if(callback)
+        {
+            callback(false);
+        }
+        return;
+    }
+    connection->sendMessageAsync(message, std::move(callback));
+}
+
 std::size_t ChatService::broadcast(const std::string& senderId, const std::string& message)
 {
     ensureLoopThread();
@@ -139,20 +164,20 @@ std::size_t ChatService::broadcast(const std::string& senderId, const std::strin
             targets.push_back(std::move(connection));
         }
     }
-    std::size_t acceptedCount = 0;
     for(const auto& connection: targets)
     {
-        if(connection->trySendMessage(message))
-        {
-            ++acceptedCount;
-        }
+        connection->sendMessageAsync(message);
     }
-    return acceptedCount;
+    return targets.size();
 }
 
 void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection, const std::string& message)
 {
     ensureLoopThread();
+    if(m_stopping)
+    {
+        return;
+    }
     if(!connection)
     {
         return;
@@ -164,14 +189,14 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         std::string userId = message.substr(6);
         bool valid = !userId.empty() && userId.find(" ") == std::string::npos;
         bool success = valid && registerUser(userId,connection);
-        connection->trySendMessage(success ? "LOGIN_OK" : "LOGIN_FAIL");
+        connection->sendMessageAsync(success ? "LOGIN_OK" : "LOGIN_FAIL");
         return;
     }
     //其他命令必须先登录
     auto senderIt = m_fdToUser.find(fd);
     if(senderIt == m_fdToUser.end())
     {
-        connection->trySendMessage("ERROR Not logged in");
+        connection->sendMessageAsync("ERROR Not logged in");
         return;
     }
     //复制用户名 避免发送过程中会话删除导致引用失效
@@ -182,13 +207,24 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         std::size_t separator = message.find(' ',5);
         if(separator == std::string::npos || separator == 5 || separator+1 >= message.size())
         {
-            connection->trySendMessage("ERROR: Invalid SEND format");
+            connection->sendMessageAsync("ERROR: Invalid SEND format");
             return;
         }
         std::string targetId = message.substr(5,separator-5);
         std::string content = message.substr(separator+1);
-        bool success = sendToUser(targetId,"FROM "+ senderId + " "+content);
-        connection->trySendMessage(success ? "SEND_OK" : "SEND_FAILED");
+        
+        std::weak_ptr<TcpConnection> weak = connection;
+        sendToUserAsync(targetId,"FROM " + senderId + " " + content,[weak](bool accepted)
+        {
+            if(m_stopping)
+            {
+                return;
+            }
+            if(auto self = weak.lock())
+            {
+                sender->sendMessageAsync(accepted ? "SEND_OK" : "SEND_FAILED");
+            }
+        });
         return;
     }
     //BROADCAST 消息内容
@@ -197,12 +233,18 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         std::string content = message.substr(10);
         if(content.empty())
         {
-            connection->trySendMessage("ERROR: Invalid BROADCAST format");
+            connection->sendMessageAsync("ERROR: Invalid BROADCAST format");
             return;
         }
         broadcast(senderId,"BROADCAST_FROM " + senderId + " " + content);
-        connection->trySendMessage("BROADCAST_OK");
+        connection->sendMessageAsync("BROADCAST_OK");
         return;
     }
-    connection->trySendMessage("ERROR Invalid command");
+    connection->sendMessageAsync("ERROR Invalid command");
+}
+
+void ChatService::stop()
+{
+    ensureLoopThread();
+    m_stopping = true;
 }

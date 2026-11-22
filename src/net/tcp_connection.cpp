@@ -107,10 +107,15 @@ void TcpConnection::handleRead(uint32_t events)
 
 void TcpConnection::close()
 {
+    if(!m_loop.isInLoopThread())
+    {
+        throw std::logic_error("close must be called from the EventLoop thread");
+    }
     if(m_closed)
     {
         return;
     }
+    auto self = shared_from_this();
     m_closed = true;
     int fd = m_socket.getFd();
     m_loop.remove(fd);
@@ -118,6 +123,18 @@ void TcpConnection::close()
     {
         m_closeCallback(fd);
     }
+}
+
+void TcpConnection::closeAsync()
+{
+    auto weak = weak_from_this();
+    m_loop.runInLoop([weak]()
+    {
+        if(auto self = weak.lock())
+        {
+            self->close();
+        }
+    });
 }
 
 void TcpConnection::setMessageCallback(MessageCallback callback)
@@ -304,4 +321,9 @@ void TcpConnection::shutdownWrite()
 std::size_t TcpConnection::pendingBytes() const noexcept
 {
     return m_outputBuffer.size() - m_outputoffset;
+}
+
+const EventLoop& TcpConnection::getLoop() const noexcept
+{
+    return m_loop;
 }
