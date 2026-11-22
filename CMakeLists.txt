@@ -142,6 +142,8 @@ add_executable(
     src/net/epoll.cpp
     src/net/event_dispatcher.cpp
     src/net/event_loop.cpp
+    src/net/event_loop_thread.cpp
+    src/net/event_loop_thread_pool.cpp
     src/net/tcp_connection.cpp
     src/net/length_field_codec.cpp
     src/net/tcp_server.cpp
@@ -227,6 +229,8 @@ add_executable(tcp_server_broadcast_test
     src/net/epoll.cpp
     src/net/event_dispatcher.cpp
     src/net/event_loop.cpp
+    src/net/event_loop_thread.cpp
+    src/net/event_loop_thread_pool.cpp
     src/net/tcp_connection.cpp
     src/net/tcp_server.cpp
     src/net/length_field_codec.cpp
@@ -248,6 +252,8 @@ add_executable(chat_service_test
     src/net/epoll.cpp
     src/net/event_dispatcher.cpp
     src/net/event_loop.cpp
+    src/net/event_loop_thread.cpp
+    src/net/event_loop_thread_pool.cpp
     src/net/length_field_codec.cpp
     src/net/tcp_connection.cpp
     src/net/tcp_server.cpp
