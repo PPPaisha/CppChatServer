@@ -133,8 +133,8 @@ int main()
     testMultipleFrames();
     constexpr uint16_t PORT = 12081;
     EventLoop loop;
-    TcpServer server(loop, PORT);
     ChatService chat(loop);
+    TcpServer server(loop, PORT);
     server.setMessageCallback([&chat](const std::shared_ptr<TcpConnection>&conn,const std::string& message)
     {
         chat.handleMessage(conn,message);
@@ -243,7 +243,11 @@ int main()
         {
             ::close(c);
         }
-        loop.stop();
+        loop.queueInLoop([&chat,&server]()
+        {
+            chat.stop();
+            server.stop();
+        });
     });
     loop.run();
     worker.join();

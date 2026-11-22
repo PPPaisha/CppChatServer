@@ -214,16 +214,20 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         std::string content = message.substr(separator+1);
         
         std::weak_ptr<TcpConnection> weak = connection;
-        sendToUserAsync(targetId,"FROM " + senderId + " " + content,[weak](bool accepted)
+        EventLoop* baseLoop = &m_loop;
+        sendToUserAsync(targetId,"FROM " + senderId + " " + content,[this,baseLoop,weak](bool accepted)
         {
-            if(m_stopping)
+            baseLoop->queueInLoop([this,weak,accepted]()
             {
-                return;
-            }
-            if(auto self = weak.lock())
-            {
-                sender->sendMessageAsync(accepted ? "SEND_OK" : "SEND_FAILED");
-            }
+                if(m_stopping)
+                {
+                    return;
+                }
+                if(auto sender = weak.lock())
+                {
+                    sender->sendMessageAsync(accepted ? "SEND_OK" : "SEND_FAILED");
+                }
+            });
         });
         return;
     }
