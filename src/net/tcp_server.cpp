@@ -59,7 +59,7 @@ void TcpServer::start()
     {
         throw std::system_error(errno, std::generic_category(), "timerfd_create failed");
     }
-    itmerspec timer{};
+    itimerspec timer{};
     timer.it_value.tv_sec = 1;
     timer.it_interval.tv_sec = 1;
     if(::timerfd_settime(m_timerFd,0,&timer,nullptr) == -1)
