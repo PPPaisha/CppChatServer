@@ -335,3 +335,18 @@ target_link_libraries(heartbeat_timeout_test
     PRIVATE
     Threads::Threads
 )
+
+add_executable(async_logger_test
+    tests/async_logger_test.cpp
+    src/utils/async_logger.cpp
+)
+
+target_include_directories(async_logger_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(async_logger_test
+    PRIVATE
+    Threads::Threads
+)
