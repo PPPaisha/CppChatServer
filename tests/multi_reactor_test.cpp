@@ -104,6 +104,7 @@ void expectMessage(TestMessageReceiver& receiver, const std::string& expected)
     }
 }
 
+//查询在线的客户端数量
 std::size_t queryOnlineCount(EventLoop& loop, ChatService& chat)
 {
     auto promise = std::make_shared<std::promise<std::size_t>>();
@@ -154,9 +155,9 @@ LoopMap queryLoopMap(EventLoop& loop, const LoopMap& connectionLoops)
 
 int main()
 {
-    testMultipleFrames();
+    testMultipleFrames();                   
     constexpr uint16_t port = 12082;
-    EventLoop loop;
+    EventLoop loop;//主EventLoop
     ChatService chat(loop);
     LoopMap connectionLoops;
     TcpServer server(loop,port,3);

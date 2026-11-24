@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <chrono>
 #include <string>
 #include <unordered_map>
 
@@ -24,7 +25,7 @@ public:
     using MessageCallback = std::function<void(const ConnectionPtr&, const std::string&)>;
     using ConnectionCloseCallback = std::function<void(int)>;
 
-    TcpServer(EventLoop& loop, uint16_t port,size_t ioThreadCount = 0);
+    TcpServer(EventLoop& loop, uint16_t port,size_t ioThreadCount = 0,std::chrono::seconds idleTimeout = std::chrono::seconds(30));
     TcpServer(const TcpServer&) = delete;
     TcpServer& operator=(const TcpServer&) = delete;
     ~TcpServer();
@@ -43,6 +44,8 @@ private:
     void tryFinishStop();
     void establishConnection(EventLoop* ioLoop, const std::shared_ptr<Socket>& pendingSocket);
     void removeConnection(int fd,const std::shared_ptr<TcpConnection>& connection);
+    void handleTimer(uint32_t events);
+    void stopTimer();
 
     EventLoop& m_loop;
     EventLoopThreadPool m_ioThreadPool;
@@ -58,4 +61,9 @@ private:
     bool m_stopping = false;
     bool m_stopped = false;
     bool m_finishStopQueued = false;
+
+    using Clock = std::chrono::steady_clock;
+    std::unordered_map<int,Clock::time_point> m_lastActiveTime;
+    std::chrono::seconds m_idleTimeout;
+    int m_timerFd = -1;
 };

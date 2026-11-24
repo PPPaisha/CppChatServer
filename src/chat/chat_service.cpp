@@ -201,6 +201,12 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
     }
     //复制用户名 避免发送过程中会话删除导致引用失效
     const std::string senderId = senderIt->second;
+    //心跳检测: 已登录客户端发送PING 服务器回复PONG
+    if(message == "PING")
+    {
+        connection->sendMessageAsync("PONG");
+        return;
+    }
     //SEND 接收者 消息内容
     if(message.rfind("SEND ",0) == 0)
     {
