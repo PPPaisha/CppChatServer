@@ -86,7 +86,7 @@ void TcpServer::start()
     try
     {
         m_ioThreadPool.start(m_ioThreadCount);
-        m_loop.add(m_listenSocket.getFd(),EPOLLIN,[this](uin32_t events)
+        m_loop.add(m_listenSocket.getFd(),EPOLLIN,[this](uint32_t events)
         {
             handleAccept(events);
         });
