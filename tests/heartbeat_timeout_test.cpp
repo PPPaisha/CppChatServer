@@ -107,7 +107,7 @@ private:
 };
 
 //持续保存解码状态 防止TCP拆包 粘包
-class TetsMessageReceiver
+class TestMessageReceiver
 {
 public:
     explicit TestMessageReceiver(int fd):m_fd(fd)
@@ -127,6 +127,10 @@ public:
             pfd.fd = m_fd;
             pfd.events = POLLIN;
             int result = ::poll(&pfd, 1, remaining);
+            if(result == 0)
+            {
+                throw std::runtime_error("poll timeout");
+            }
             if(result < 0)
             {
                 if(errno == EINTR)
