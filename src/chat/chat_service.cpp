@@ -198,7 +198,7 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         {
             if(success)
             {
-                m_logger->log(LogLevel::INFO,"User login succeded, fd=" + std::to_string(fd));
+                m_logger->log(LogLevel::INFO,"User login succeeded, fd=" + std::to_string(fd));
             }
             else
             {
@@ -283,7 +283,7 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
             connection->sendMessageAsync("ERROR: Invalid BROADCAST format");
             return;
         }
-        broadcast(senderId,"BROADCAST_FROM " + senderId + " " + content);
+        std::size_t count = broadcast(senderId,"BROADCAST_FROM " + senderId + " " + content);
         if(m_logger)
         {
             m_logger->log(LogLevel::DEBUG,"Broadcast requested, senderFd=" + std::to_string(fd) + ", targets=" + std::to_string(count) + ", bytes=" + std::to_string(content.size()));
