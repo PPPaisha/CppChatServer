@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 
+class AsyncLogger;
 class TcpServer
 {
 public:
@@ -25,7 +26,7 @@ public:
     using MessageCallback = std::function<void(const ConnectionPtr&, const std::string&)>;
     using ConnectionCloseCallback = std::function<void(int)>;
 
-    TcpServer(EventLoop& loop, uint16_t port,size_t ioThreadCount = 0,std::chrono::seconds idleTimeout = std::chrono::seconds(30));
+    TcpServer(EventLoop& loop, uint16_t port,size_t ioThreadCount = 0,std::chrono::seconds idleTimeout = std::chrono::seconds(30),AsyncLogger* logger = nullptr);
     TcpServer(const TcpServer&) = delete;
     TcpServer& operator=(const TcpServer&) = delete;
     ~TcpServer();
@@ -50,6 +51,7 @@ private:
     EventLoop& m_loop;
     EventLoopThreadPool m_ioThreadPool;
     Socket m_listenSocket;
+    AsyncLogger* m_logger = nullptr;
 
     std::unordered_map<int,ConnectionPtr> m_connections;
     std::unordered_map<int,EventLoop*> m_connectionLoops;

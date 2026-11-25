@@ -350,3 +350,50 @@ target_link_libraries(async_logger_test
     PRIVATE
     Threads::Threads
 )
+
+# Version2.7 异步日志系统集成测试
+add_executable(logger_integration_test
+    tests/logger_integration_test.cpp
+    src/net/socket.cpp
+    src/net/epoll.cpp
+    src/net/event_dispatcher.cpp
+    src/net/event_loop.cpp
+    src/net/event_loop_thread.cpp
+    src/net/event_loop_thread_pool.cpp
+    src/net/tcp_connection.cpp
+    src/net/tcp_server.cpp
+    src/net/length_field_codec.cpp
+    src/chat/chat_service.cpp
+    src/utils/async_logger.cpp
+)
+
+target_include_directories(logger_integration_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(logger_integration_test
+    PRIVATE
+    Threads::Threads
+)
+
+# Version2.7 兼容旧版本测试目标
+foreach(test_target IN ITEMS
+    tcp_connection_test
+    tcp_connection_length_field_codec_test
+    tcp_connection_send_test
+    tcp_connection_shutdown_test
+    tcp_server_test
+    tcp_connection_backpressure_test
+    tcp_connection_async_test
+    tcp_connection_callback_test
+    tcp_server_broadcast_test
+    chat_service_test
+    multi_reactor_test
+    heartbeat_timeout_test
+)
+    target_sources(${test_target}
+        PRIVATE
+        src/utils/async_logger.cpp
+    )
+endforeach()

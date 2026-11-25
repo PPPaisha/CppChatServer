@@ -14,6 +14,7 @@
 #include <utility>
 #include <iostream>
 
+//打开日志文件 启动日志线程
 AsyncLogger::AsyncLogger(const std::string& filePath, LogLevel level)
     :m_file(filePath,std::ios::out | std::ios::app),m_level(level)
 {
@@ -21,19 +22,25 @@ AsyncLogger::AsyncLogger(const std::string& filePath, LogLevel level)
     {
         throw std::runtime_error("Failed to open log file:" + filePath);
     }
-    m_thread = std::thread(&AsyncLogger::threadFunc,this);
+    m_thread = std::thread([this]()
+    {
+        this->threadFunc();
+    });
 }
 
+//自动回收日志系统资源
 AsyncLogger::~AsyncLogger()
 {
     stop();
 }
 
+//动态修改日志过滤等级
 void AsyncLogger::setLevel(LogLevel level) noexcept
 {
     m_level.store(level);
 }
 
+//将枚举转换为字符串
 const char* AsyncLogger::levelToString(LogLevel level)
 {
     switch(level)
@@ -51,11 +58,12 @@ const char* AsyncLogger::levelToString(LogLevel level)
     }
 }
 
+//格式化一条完整的日志消息 包含时间戳 日志等级 线程ID 消息内容
 std::string AsyncLogger::formatMessage(LogLevel level, const std::string& message)
 {
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t time = std::chrono::system_clock::to_time_t(now);
-    std::tm localTime{};
+    const auto now = std::chrono::system_clock::now();//获取当前时间
+    const std::time_t time = std::chrono::system_clock::to_time_t(now);//转换为time_t类型
+    std::tm localTime{};//创建一个tm结构体用于存储本地时间
     if(::localtime_r(&time,&localTime) == nullptr)
     {
         throw std::runtime_error("localtime_r failed");
@@ -68,6 +76,7 @@ std::string AsyncLogger::formatMessage(LogLevel level, const std::string& messag
     return oss.str();
 }
 
+//过滤日志并提交到共享队列
 bool AsyncLogger::log(LogLevel level, const std::string& message)
 {
     if(level < m_level.load(std::memory_order_relaxed))
@@ -85,6 +94,7 @@ bool AsyncLogger::log(LogLevel level, const std::string& message)
     return true;
 }
 
+//等待 批量获取并写入日志
 void AsyncLogger::threadFunc()
 {
     std::vector<std::string> messages;
@@ -104,7 +114,7 @@ void AsyncLogger::threadFunc()
         {
             m_file << message <<std::endl;
         }
-        m_file.flush();
+        m_file.flush();//请求将C++输出流中尚未输出的数据刷新到底层文件
         messages.clear();
     }
     m_file.flush();
@@ -114,6 +124,7 @@ void AsyncLogger::threadFunc()
     }
 }
 
+//停止接收日志 等待写入完成并回收资源
 void AsyncLogger::stop()
 {
     std::lock_guard<std::mutex> lock(m_stopMutex);

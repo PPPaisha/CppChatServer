@@ -5,6 +5,7 @@
 // 文件描述:tcp连接类实现文件
 //------------------------------------------------------
 #include "net/tcp_connection.h"
+#include "utils/async_logger.h"
 
 #include <sys/socket.h>
 #include <sys/epoll.h>
@@ -14,8 +15,8 @@
 #include <stdexcept>
 #include <vector>
 
-TcpConnection::TcpConnection(EventLoop& loop, Socket socket)
-    :m_loop(loop),m_socket(std::move(socket))
+TcpConnection::TcpConnection(EventLoop& loop, Socket socket,AsyncLogger* logger)
+    :m_loop(loop),m_socket(std::move(socket)),m_logger(logger)
 {
 }
 
@@ -33,12 +34,20 @@ void TcpConnection::start()
             }
         }
     });
+    if(m_logger)
+    {
+        m_logger->log(LogLevel::INFO,"TcpConnection started, fd=" + std::to_string(getFd()));
+    }
 }
 
 void TcpConnection::handleRead(uint32_t events)
 {
     if(events & EPOLLERR)
     {
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::ERROR,"EPOLLERR, fd=" + std::to_string(getFd()));
+        }
         close();
         return;
     }
@@ -60,11 +69,19 @@ void TcpConnection::handleRead(uint32_t events)
             }
             catch(const std::length_error&)
             {
+                if(m_logger)
+                {
+                    m_logger->log(LogLevel::WARN,"Invalid message length, fd=" + std::to_string(getFd()));
+                }
                 close();
                 return;
             }
             for(const auto& message : messages)
             {
+                if(m_logger)
+                {
+                    m_logger->log(LogLevel::DEBUG,"Message received, fd=" + std::to_string(getFd()) + ", bytes=" + std::to_string(message.size()));
+                }
                 if(m_messageCallback)
                 {
                     m_messageCallback(message);
@@ -77,6 +94,10 @@ void TcpConnection::handleRead(uint32_t events)
         }
         else if(n == 0)
         {
+            if(m_logger)
+            {
+                m_logger->log(LogLevel::INFO,"Peer closed write side, fd=" + std::to_string(getFd()));
+            }
             m_peerReadClosed = true;
             m_disconnecting = true;
             if(m_outputoffset == m_outputBuffer.size())
@@ -99,6 +120,11 @@ void TcpConnection::handleRead(uint32_t events)
         }
         else
         {
+            const int error = errno;
+            if(m_logger)
+            {
+                m_logger->log(LogLevel::ERROR,"recv failed, fd=" + std::to_string(getFd())+", error=" + std::to_string(error));
+            }
             close();
             return;
         }
@@ -119,6 +145,10 @@ void TcpConnection::close()
     m_closed = true;
     int fd = m_socket.getFd();
     m_loop.remove(fd);
+    if(m_logger)
+    {
+        m_logger->log(LogLevel::INFO,"TcpConnection closed, fd=" + std::to_string(fd));
+    }
     if(m_closeCallback)
     {
         m_closeCallback(fd);
@@ -197,6 +227,10 @@ bool TcpConnection::trySendMessage(const std::string& message)
     }
     if(message.size() > LengthFieldCodec::MAX_FRAME_SIZE)
     {
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::WARN,"Outgoing message too large, fd="+std::to_string(getFd()));
+        }
         return false;
     }
 
@@ -204,6 +238,10 @@ bool TcpConnection::trySendMessage(const std::string& message)
     const std::size_t frameSize = headerSize + message.size();
     if(frameSize > MAX_PENDING_BYTES - pendingBytes())
     {
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::WARN, "Backpressure limit reached, fd=" + std::to_string(getFd()) + ", pendingBytes=" + std::to_string(pendingBytes()));
+        }
         return false;
     }
     std::string frame = LengthFieldCodec::encode(message);
@@ -244,6 +282,11 @@ void TcpConnection::handleWrite()
         }
         else
         {
+            const int error = (n<0) ? errno : 0;
+            if(m_logger)
+            {
+                m_logger->log(LogLevel::ERROR, "send failed, fd=" + std::to_string(getFd()) + ", errno=" + std::to_string(error));
+            }
             close();
             return;
         }
@@ -307,6 +350,11 @@ void TcpConnection::shutdownWrite()
     {
         if(::shutdown(m_socket.getFd(),SHUT_WR)!=0)
         {
+            const int error = errno;
+            if(m_logger)
+            {
+                m_logger->log(LogLevel::ERROR,"shutdown failed, fd=" + std::to_string(getFd()) + ", errno=" + std::to_string(error));
+            }
             close();
             return;
         }

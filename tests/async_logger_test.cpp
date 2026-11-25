@@ -31,7 +31,7 @@ int main()
                 throw std::runtime_error("Failed to clear log file");
             }
         }
-        AsyncLogger logger(LOG_PATH, LogLevel::INFO);
+        AsyncLogger logger(LOG_PATH, LogLevel::INFO); //构造一个异步日志器对象，日志等级为INFO
         
         //Test1::日志等级过滤
         if(logger.log(LogLevel::DEBUG,"Fitered message") || !logger.log(LogLevel::INFO,"Info message")
@@ -54,6 +54,7 @@ int main()
         std::atomic<int> accepted{0};
         for(int i=0; i<THREAD_COUNT; ++i)
         {
+            //先创建了4个线程 让每个线程提交1000条日志 统计成功提交的日志数量
             workers.emplace_back([&logger,&accepted,i]()
             {
                 for(int j=0; j<MESSAGE_COUNT; ++j)

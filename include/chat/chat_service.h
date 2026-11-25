@@ -14,6 +14,7 @@
 
 class EventLoop;
 class TcpConnection;
+class AsyncLogger;
 
 struct UserSession
 {
@@ -26,7 +27,7 @@ class ChatService
 {
 public:
     using SendResultCallback = std::function<void(bool)>;
-    explicit ChatService(EventLoop& loop);
+    explicit ChatService(EventLoop& loop, AsyncLogger* logger = nullptr);
     void removeConnection(int fd);
     void stop();
     void handleMessage(const std::shared_ptr<TcpConnection>& connection, const std::string& message);
@@ -43,6 +44,7 @@ public:
 private:
     void ensureLoopThread() const;
     EventLoop& m_loop;
+    AsyncLogger* m_logger = nullptr;
     std::unordered_map<std::string,UserSession> m_sessions;
     std::unordered_map<int,std::string> m_fdToUser;
     bool m_stopping = false;

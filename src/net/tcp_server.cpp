@@ -5,6 +5,7 @@
 // 文件描述:tcpserver类实现文件
 //------------------------------------------------------
 #include "net/tcp_server.h"
+#include "utils/async_logger.h"
 
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
@@ -18,8 +19,8 @@
 #include <chrono>
 #include <system_error>
 
-TcpServer::TcpServer(EventLoop& loop, uint16_t port,std::size_t ioThreadCount,std::chrono::seconds idleTimeout)
-    :m_loop(loop),m_ioThreadPool(loop),m_ioThreadCount(ioThreadCount),m_idleTimeout(idleTimeout)
+TcpServer::TcpServer(EventLoop& loop, uint16_t port,std::size_t ioThreadCount,std::chrono::seconds idleTimeout,AsyncLogger* logger)
+    :m_loop(loop),m_ioThreadPool(loop),m_ioThreadCount(ioThreadCount),m_idleTimeout(idleTimeout),m_logger(logger)
 {
     if(m_idleTimeout.count() <= 0)
     {
@@ -98,6 +99,10 @@ void TcpServer::start()
         throw;
     }
     m_started = true;
+    if(m_logger)
+    {
+        m_logger->log(LogLevel::INFO, "TcpServer started, ioThreads=" + std::to_string(m_ioThreadCount) + ", idleTimeout=" + std::to_string(m_idleTimeout.count())+"s");
+    }
 }
 
 void TcpServer::removeConnection(int fd, const std::shared_ptr<TcpConnection>& connection)
@@ -115,6 +120,10 @@ void TcpServer::removeConnection(int fd, const std::shared_ptr<TcpConnection>& c
     m_connections.erase(it);
     m_connectionLoops.erase(fd);
     m_lastActiveTime.erase(fd);
+    if(m_logger)
+    {
+        m_logger->log(LogLevel::INFO, "Connection removed, fd=" + std::to_string(fd) + ", totalConnections=" + std::to_string(m_connections.size()));
+    }
     if(m_connectionCloseCallback)
     {
         m_connectionCloseCallback(fd);
@@ -130,6 +139,10 @@ void TcpServer::handleAccept(uint32_t events)
     }
     while(auto accepted = m_listenSocket.accept())
     {
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::INFO, "New connection accepted, fd=" + std::to_string(accepted->getFd()));
+        }
         EventLoop* ioLoop  = m_ioThreadPool.getNextLoop();
         auto pendingSocket = std::make_shared<Socket>(std::move(*accepted));
         ++m_pendingConnections;
@@ -185,7 +198,7 @@ void TcpServer::broadcast(int senderFd, const std::string& message)
 
 void TcpServer::establishConnection(EventLoop* ioLoop, const std::shared_ptr<Socket>& pendingSocket)
 {
-    auto connection = std::make_shared<TcpConnection>(*ioLoop, std::move(*pendingSocket));
+    auto connection = std::make_shared<TcpConnection>(*ioLoop, std::move(*pendingSocket),m_logger);
     const int fd = connection->getFd();
     std::weak_ptr<TcpConnection> weak = connection;
     //设置消息回调
@@ -236,6 +249,10 @@ void TcpServer::establishConnection(EventLoop* ioLoop, const std::shared_ptr<Soc
         m_connectionLoops.emplace(fd,ioLoop);
         m_lastActiveTime[fd] = Clock::now();
         --m_pendingConnections;
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::INFO, "Connection registered, fd=" + std::to_string(fd) + ", totalConnections=" + std::to_string(m_connections.size()));
+        }
         if(m_stopping)
         {
             connection->closeAsync();
@@ -259,6 +276,10 @@ void TcpServer::stop()
         return;
     }
     m_stopping = true;
+    if(m_logger)
+    {
+        m_logger->log(LogLevel::INFO, "TcpServer stopping, activeConnections=" + std::to_string(m_connections.size()));
+    }
     stopTimer();
     //注销监听事件
     m_loop.remove(m_listenSocket.getFd());
@@ -295,6 +316,10 @@ void TcpServer::tryFinishStop()
     {
         m_ioThreadPool.stop();
         m_stopped = true;
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::INFO, "TcpServer stopped");
+        }
         m_loop.stop();
     });
 }
@@ -346,6 +371,11 @@ void TcpServer::handleTimer(uint32_t events)
         if(it == m_connections.end())
         {
             continue;
+        }
+        if(m_logger)
+        {
+            const auto idleSeconds = std::chrono::duration_cast<std::chrono::seconds>(now - lastActive).count();
+            m_logger->log(LogLevel::WARN, "Idle connection timeout, fd=" + std::to_string(fd) + ", idleSeconds=" + std::to_string(idleSeconds));
         }
         expiredConnections.push_back(it->second);
         //避免下一次定时扫描重复提交关闭任务

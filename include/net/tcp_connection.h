@@ -15,6 +15,7 @@
 #include <string>
 #include <cstddef>
 
+class AsyncLogger;
 class TcpConnection : public std::enable_shared_from_this<TcpConnection>
 {
 public:
@@ -23,7 +24,7 @@ public:
     using SendResultCallback = std::function<void(bool)>;
     static constexpr std::size_t MAX_PENDING_BYTES = 1024*1024;
 
-    TcpConnection(EventLoop& loop, Socket socket);
+    TcpConnection(EventLoop& loop, Socket socket,AsyncLogger* logger = nullptr);
     TcpConnection(const TcpConnection&) = delete;
     TcpConnection& operator=(const TcpConnection&) = delete;
 
@@ -57,4 +58,5 @@ private:
     LengthFieldCodec m_codec;
     std::string m_outputBuffer;
     std::size_t m_outputoffset = 0;
+    AsyncLogger* m_logger = nullptr;
 };

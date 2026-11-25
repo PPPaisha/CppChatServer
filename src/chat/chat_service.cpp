@@ -5,6 +5,7 @@
 // 文件描述:客户端聊天服务实现文件
 //------------------------------------------------------
 #include "chat/chat_service.h"
+#include "utils/async_logger.h"
 
 #include "net/event_loop.h"
 #include "net/tcp_connection.h"
@@ -13,8 +14,8 @@
 #include <utility>
 #include <vector>
 
-ChatService::ChatService(EventLoop& loop)
-    :m_loop(loop)
+ChatService::ChatService(EventLoop& loop,AsyncLogger* logger)
+    :m_loop(loop),m_logger(logger)
 {
 }
 
@@ -82,6 +83,10 @@ bool ChatService::removeUser(const std::string& userId)
         m_fdToUser.erase(fdIt);
     }
     m_sessions.erase(it);
+    if(m_logger)
+    {
+        m_logger->log(LogLevel::INFO,"User session removed, fd=" + std::to_string(fd));
+    }
     return true;
 }
 
@@ -189,6 +194,17 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         std::string userId = message.substr(6);
         bool valid = !userId.empty() && userId.find(" ") == std::string::npos;
         bool success = valid && registerUser(userId,connection);
+        if(m_logger)
+        {
+            if(success)
+            {
+                m_logger->log(LogLevel::INFO,"User login succeded, fd=" + std::to_string(fd));
+            }
+            else
+            {
+                m_logger->log(LogLevel::WARN,"User login failed, fd=" + std::to_string(fd));
+            }
+        }
         connection->sendMessageAsync(success ? "LOGIN_OK" : "LOGIN_FAIL");
         return;
     }
@@ -196,6 +212,10 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
     auto senderIt = m_fdToUser.find(fd);
     if(senderIt == m_fdToUser.end())
     {
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::WARN,"Command from unregistered connection, fd=" + std::to_string(fd));
+        }
         connection->sendMessageAsync("ERROR Not logged in");
         return;
     }
@@ -204,6 +224,10 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
     //心跳检测: 已登录客户端发送PING 服务器回复PONG
     if(message == "PING")
     {
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::DEBUG,"Heartbeat received, fd=" + std::to_string(fd));
+        }
         connection->sendMessageAsync("PONG");
         return;
     }
@@ -213,21 +237,34 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         std::size_t separator = message.find(' ',5);
         if(separator == std::string::npos || separator == 5 || separator+1 >= message.size())
         {
+            if(m_logger)
+            {
+                m_logger->log(LogLevel::WARN,"Invalid SEND format, fd=" + std::to_string(fd));
+            }
             connection->sendMessageAsync("ERROR: Invalid SEND format");
             return;
         }
         std::string targetId = message.substr(5,separator-5);
         std::string content = message.substr(separator+1);
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::DEBUG,"Private message requested , senderFd=" + std::to_string(fd) + ", bytes=" + std::to_string(content.size()));
+        }
         
         std::weak_ptr<TcpConnection> weak = connection;
         EventLoop* baseLoop = &m_loop;
-        sendToUserAsync(targetId,"FROM " + senderId + " " + content,[this,baseLoop,weak](bool accepted)
+        sendToUserAsync(targetId,"FROM " + senderId + " " + content,[this,baseLoop,weak,fd](bool accepted)
         {
-            baseLoop->queueInLoop([this,weak,accepted]()
+            baseLoop->queueInLoop([this,weak,accepted,fd]()
             {
                 if(m_stopping)
                 {
                     return;
+                }
+                if(m_logger)
+                {
+                    m_logger->log(accepted ? LogLevel::DEBUG : LogLevel::WARN, std::string(
+                        accepted ? "Private message accepted" : "Private message rejected") + ", senderFd=" + std::to_string(fd));
                 }
                 if(auto sender = weak.lock())
                 {
@@ -238,7 +275,7 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
         return;
     }
     //BROADCAST 消息内容
-    if(message.rfind("BROADCAST",0) == 0)
+    if(message.rfind("BROADCAST ",0) == 0)
     {
         std::string content = message.substr(10);
         if(content.empty())
@@ -247,8 +284,16 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
             return;
         }
         broadcast(senderId,"BROADCAST_FROM " + senderId + " " + content);
+        if(m_logger)
+        {
+            m_logger->log(LogLevel::DEBUG,"Broadcast requested, senderFd=" + std::to_string(fd) + ", targets=" + std::to_string(count) + ", bytes=" + std::to_string(content.size()));
+        }
         connection->sendMessageAsync("BROADCAST_OK");
         return;
+    }
+    if(m_logger)
+    {
+        m_logger->log(LogLevel::WARN, "Unknown command, fd=" + std::to_string(fd));
     }
     connection->sendMessageAsync("ERROR Invalid command");
 }
@@ -256,5 +301,13 @@ void ChatService::handleMessage(const std::shared_ptr<TcpConnection>& connection
 void ChatService::stop()
 {
     ensureLoopThread();
+    if(m_stopping)
+    {
+        return;
+    }
     m_stopping = true;
+    if(m_logger)
+    {
+        m_logger->log(LogLevel::INFO, "ChatService stopping, onlineUsers=" + std::to_string(m_sessions.size()));
+    }
 }
