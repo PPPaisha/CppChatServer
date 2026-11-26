@@ -6,14 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(
-    chat_server
-    src/main.cpp 
-    src/app.cpp
-    src/net/socket.cpp)
-
-target_include_directories(chat_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-add_executable(
     socket_test
     tests/socket_test.cpp
     src/net/socket.cpp  )
@@ -397,3 +389,52 @@ foreach(test_target IN ITEMS
         src/utils/async_logger.cpp
     )
 endforeach()
+
+# Version2.8 正式聊天服务器
+add_executable(chat_server
+    src/main.cpp
+    src/net/socket.cpp
+    src/net/epoll.cpp
+    src/net/event_dispatcher.cpp
+    src/net/event_loop.cpp
+    src/net/event_loop_thread.cpp
+    src/net/event_loop_thread_pool.cpp
+    src/net/tcp_connection.cpp
+    src/net/tcp_server.cpp
+    src/net/length_field_codec.cpp
+    src/net/signal_handler.cpp
+    src/chat/chat_service.cpp
+    src/utils/async_logger.cpp
+    src/utils/server_config.cpp
+)
+
+target_include_directories(chat_server
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(chat_server
+    PRIVATE
+    Threads::Threads
+)
+
+# Version2.8 服务器工程化集成测试
+add_executable(server_integration_test
+    tests/server_integration_test.cpp
+    src/utils/server_config.cpp
+    src/net/length_field_codec.cpp
+)
+
+target_include_directories(server_integration_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(server_integration_test
+    PRIVATE
+    Threads::Threads
+)
+
+add_dependencies(server_integration_test
+    chat_server
+)
